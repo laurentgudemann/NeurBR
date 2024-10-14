@@ -20,8 +20,7 @@ def crop_image(img, d=32):
     :return:
     """
 
-    new_size = (img.size[0] - img.size[0] % d,
-                img.size[1] - img.size[1] % d)
+    new_size = (img.size[0] - img.size[0] % d, img.size[1] - img.size[1] % d)
 
     bbox = [
         int((img.size[0] - new_size[0]) / 2),
@@ -46,14 +45,13 @@ def crop_torch_image(img, d=32):
     :param d:
     :return:
     """
-    new_size = (img.shape[-2] - img.shape[-2] % d,
-                img.shape[-1] - img.shape[-1] % d)
+    new_size = (img.shape[-2] - img.shape[-2] % d, img.shape[-1] - img.shape[-1] % d)
     pad = ((img.shape[-2] - new_size[-2]) // 2, (img.shape[-1] - new_size[-1]) // 2)
 
     if len(img.shape) == 4:
-        return img[:, :, pad[-2]: pad[-2] + new_size[-2], pad[-1]: pad[-1] + new_size[-1]]
+        return img[:, :, pad[-2] : pad[-2] + new_size[-2], pad[-1] : pad[-1] + new_size[-1]]
     assert len(img.shape) == 3
-    return img[:, pad[-2]: pad[-2] + new_size[-2], pad[-1]: pad[-1] + new_size[-1]]
+    return img[:, pad[-2] : pad[-2] + new_size[-2], pad[-1] : pad[-1] + new_size[-1]]
 
 
 def get_params(opt_over, net, net_input, downsampler=None):
@@ -66,21 +64,20 @@ def get_params(opt_over, net, net_input, downsampler=None):
     :return:
     """
 
-    opt_over_list = opt_over.split(',')
+    opt_over_list = opt_over.split(",")
     params = []
 
     for opt in opt_over_list:
-
-        if opt == 'net':
+        if opt == "net":
             params += [x for x in net.parameters()]
-        elif opt == 'down':
+        elif opt == "down":
             assert downsampler is not None
             params = [x for x in downsampler.parameters()]
-        elif opt == 'input':
+        elif opt == "input":
             net_input.requires_grad = True
             params += [net_input]
         else:
-            assert False, 'what is it?'
+            assert False, "what is it?"
 
     return params
 
@@ -98,7 +95,7 @@ def get_image_grid(images_np, nrow=8):
     return torch_grid.numpy()
 
 
-def plot_image_grid(name, images_np, interpolation='lanczos', output_path="output/"):
+def plot_image_grid(name, images_np, interpolation="lanczos", output_path="output/"):
     """
     Draws images in a grid
 
@@ -116,7 +113,7 @@ def plot_image_grid(name, images_np, interpolation='lanczos', output_path="outpu
     grid = get_image_grid(images_np, 3)
 
     if images_np[0].shape[0] == 1:
-        plt.imshow(grid[0], cmap='gray', interpolation=interpolation)
+        plt.imshow(grid[0], cmap="gray", interpolation=interpolation)
     else:
         plt.imshow(grid.transpose(1, 2, 0), interpolation=interpolation)
 
@@ -127,25 +124,28 @@ def save_image(name, image_np, output_path="output/"):
     p = np_to_pil(image_np)
     p.save(output_path + "{}.png".format(name))
 
+
 def video_to_images(file_name, name):
     video = prepare_video(file_name)
     for i, f in enumerate(video):
         save_image(name + "_{0:03d}".format(i), f)
 
+
 def images_to_video(images_dir, name, gray=False):
-    num = len(glob.glob(images_dir +"/*.bmp"))
+    num = len(glob.glob(images_dir + "/*.bmp"))
     c = []
     for i in range(num):
         if gray:
-            img = prepare_gray_image(images_dir + "/"+  name +"-{}.bmp".format(i))
+            img = prepare_gray_image(images_dir + "/" + name + "-{}.bmp".format(i))
         else:
-            img = prepare_image(images_dir + "/"+name+"-{}.bmp".format(99+i*100))
+            img = prepare_image(images_dir + "/" + name + "-{}.bmp".format(99 + i * 100))
         print(img.shape)
         c.append(img)
     save_video(name, np.array(c))
 
+
 def save_heatmap(name, image_np):
-    cmap = plt.get_cmap('jet')
+    cmap = plt.get_cmap("jet")
 
     rgba_img = cmap(image_np)
     rgb_img = np.delete(rgba_img, 3, 2)
@@ -164,24 +164,41 @@ def create_augmentations(np_image):
     :param np_image:
     :return:
     """
-    aug = [np_image.copy(), np.rot90(np_image, 1, (1, 2)).copy(),
-           np.rot90(np_image, 2, (1, 2)).copy(), np.rot90(np_image, 3, (1, 2)).copy()]
-    flipped = np_image[:,::-1, :].copy()
-    aug += [flipped.copy(), np.rot90(flipped, 1, (1, 2)).copy(), np.rot90(flipped, 2, (1, 2)).copy(), np.rot90(flipped, 3, (1, 2)).copy()]
+    aug = [
+        np_image.copy(),
+        np.rot90(np_image, 1, (1, 2)).copy(),
+        np.rot90(np_image, 2, (1, 2)).copy(),
+        np.rot90(np_image, 3, (1, 2)).copy(),
+    ]
+    flipped = np_image[:, ::-1, :].copy()
+    aug += [
+        flipped.copy(),
+        np.rot90(flipped, 1, (1, 2)).copy(),
+        np.rot90(flipped, 2, (1, 2)).copy(),
+        np.rot90(flipped, 3, (1, 2)).copy(),
+    ]
     return aug
 
 
 def create_video_augmentations(np_video):
     """
-        convention: original, left, upside-down, right, rot1, rot2, rot3
-        :param np_video:
-        :return:
-        """
-    aug = [np_video.copy(), np.rot90(np_video, 1, (2, 3)).copy(),
-           np.rot90(np_video, 2, (2, 3)).copy(), np.rot90(np_video, 3, (2, 3)).copy()]
+    convention: original, left, upside-down, right, rot1, rot2, rot3
+    :param np_video:
+    :return:
+    """
+    aug = [
+        np_video.copy(),
+        np.rot90(np_video, 1, (2, 3)).copy(),
+        np.rot90(np_video, 2, (2, 3)).copy(),
+        np.rot90(np_video, 3, (2, 3)).copy(),
+    ]
     flipped = np_video[:, :, ::-1, :].copy()
-    aug += [flipped.copy(), np.rot90(flipped, 1, (2, 3)).copy(), np.rot90(flipped, 2, (2, 3)).copy(),
-            np.rot90(flipped, 3, (2, 3)).copy()]
+    aug += [
+        flipped.copy(),
+        np.rot90(flipped, 1, (2, 3)).copy(),
+        np.rot90(flipped, 2, (2, 3)).copy(),
+        np.rot90(flipped, 3, (2, 3)).copy(),
+    ]
     return aug
 
 
@@ -197,9 +214,9 @@ def save_graphs(name, graph_dict, output_path="output/"):
     for k, v in graph_dict.items():
         ax.plot(v, label=k)
         # ax.semilogy(v, label=k)
-    ax.set_xlabel('iterations')
+    ax.set_xlabel("iterations")
     # ax.set_ylabel(name)
-    ax.set_ylabel('MSE-loss')
+    ax.set_ylabel("MSE-loss")
     # ax.set_ylabel('PSNR')
     plt.legend()
     plt.savefig(output_path + name + ".png")
@@ -276,7 +293,7 @@ def pil_to_np(img_PIL, with_transpose=True):
         else:
             ar = ar[None, ...]
 
-    return ar.astype(np.float32) / 255.
+    return ar.astype(np.float32) / 255.0
 
 
 def median(img_np_list):
@@ -292,7 +309,7 @@ def median(img_np_list):
     for c in range(shape[0]):
         for w in range(shape[1]):
             for h in range(shape[2]):
-                result[c, w, h] = sorted(i[c, w, h] for i in img_np_list)[l//2]
+                result[c, w, h] = sorted(i[c, w, h] for i in img_np_list)[l // 2]
     return result
 
 
@@ -339,7 +356,8 @@ def np_to_torch(img_np):
     :param img_np:
     :return:
     """
-    return torch.from_numpy(img_np)[None, :]
+    out = torch.from_numpy(img_np)[None, :]
+    return out.type(torch.cuda.FloatTensor)
 
 
 def torch_to_np(img_var):
@@ -351,5 +369,3 @@ def torch_to_np(img_var):
     :return:
     """
     return img_var.detach().cpu().numpy()[0]
-
-    

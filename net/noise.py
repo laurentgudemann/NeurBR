@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.image_io import np_to_torch
+from glass_post.detail.ltm.neur_br.utils.image_io import np_to_torch
 
 
-def get_noise(input_depth, method, spatial_size, noise_type='u', var=1. / 100):
+def get_noise(input_depth, method, spatial_size, noise_type="u", var=1.0 / 100):
     """
     Returns a pytorch.Tensor of size (1 x `input_depth` x `spatial_size[0]` x `spatial_size[1]`)
     initialized in a specific way.
@@ -19,26 +19,28 @@ def get_noise(input_depth, method, spatial_size, noise_type='u', var=1. / 100):
     """
     if isinstance(spatial_size, int):
         spatial_size = (spatial_size, spatial_size)
-    if method == 'noise':
+    if method == "noise":
         shape = [1, input_depth, spatial_size[0], spatial_size[1]]
         net_input = torch.zeros(shape)
 
         fill_noise(net_input, noise_type)
         net_input *= var
 
-    elif method == 'fourier':
+    elif method == "fourier":
         shape = [1, input_depth // 2, spatial_size[0], spatial_size[1]]
         net_input = torch.zeros(shape)
 
         fill_noise(net_input, noise_type)
         net_input *= var
 
-        net_input = torch.cat([torch.sin(2. * np.pi * net_input), torch.cos(2. * np.pi * net_input)], 1)
+        net_input = torch.cat([torch.sin(2.0 * np.pi * net_input), torch.cos(2.0 * np.pi * net_input)], 1)
 
-    elif method == 'meshgrid':
+    elif method == "meshgrid":
         assert input_depth % 2 == 0
-        X, Y = np.meshgrid(np.arange(0, spatial_size[1]) / float(spatial_size[1] - 1),
-                           np.arange(0, spatial_size[0]) / float(spatial_size[0] - 1))
+        X, Y = np.meshgrid(
+            np.arange(0, spatial_size[1]) / float(spatial_size[1] - 1),
+            np.arange(0, spatial_size[0]) / float(spatial_size[0] - 1),
+        )
         meshgrid = np.concatenate([X[None, :], Y[None, :]] * (input_depth // 2))
         net_input = np_to_torch(meshgrid)
     else:
@@ -47,7 +49,7 @@ def get_noise(input_depth, method, spatial_size, noise_type='u', var=1. / 100):
     return net_input
 
 
-def get_video_noise(input_depth, method, temporal_size, spatial_size, noise_type='u', var=1. / 100, type="dependant"):
+def get_video_noise(input_depth, method, temporal_size, spatial_size, noise_type="u", var=1.0 / 100, type="dependant"):
     """
     Returns a pytorch.Tensor of size (frame_number x `input_depth` x `spatial_size[0]` x `spatial_size[1]`)
     initialized in a specific way.
@@ -61,7 +63,7 @@ def get_video_noise(input_depth, method, temporal_size, spatial_size, noise_type
     """
     if isinstance(spatial_size, int):
         spatial_size = (spatial_size, spatial_size)
-    if method == 'noise':
+    if method == "noise":
         all_noise = []
         for i in range(temporal_size):
             shape = [input_depth, spatial_size[0], spatial_size[1]]
@@ -73,19 +75,23 @@ def get_video_noise(input_depth, method, temporal_size, spatial_size, noise_type
                 elif type == "half_dependant":
                     frame = np.random.uniform(0, 1, size=shape)
                     frame *= var
-                    new_noise = (all_noise[-1] + frame)
-                    new_noise[:input_depth // 2,:,:] = (var * 10) * np.random.uniform(0, 1, size=shape)[:input_depth // 2,:,:]
+                    new_noise = all_noise[-1] + frame
+                    new_noise[: input_depth // 2, :, :] = (var * 10) * np.random.uniform(0, 1, size=shape)[
+                        : input_depth // 2, :, :
+                    ]
                     all_noise.append(new_noise)
             else:
                 frame = np.random.uniform(-0.5, 0.5, size=shape)
-                frame *= (var * 10)
+                frame *= var * 10
                 all_noise.append(frame)
         return np_to_torch(np.array(all_noise))[0]
-    elif method == 'meshgrid':
+    elif method == "meshgrid":
         assert False
         assert input_depth % 2 == 0
-        X, Y = np.meshgrid(np.arange(0, spatial_size[1]) / float(spatial_size[1] - 1),
-                           np.arange(0, spatial_size[0]) / float(spatial_size[0] - 1))
+        X, Y = np.meshgrid(
+            np.arange(0, spatial_size[1]) / float(spatial_size[1] - 1),
+            np.arange(0, spatial_size[0]) / float(spatial_size[0] - 1),
+        )
         meshgrid = np.concatenate([X[None, :], Y[None, :]] * (input_depth // 2))
         net_input = np_to_torch(meshgrid)
     else:
@@ -102,7 +108,9 @@ class NoiseNet(nn.Module):
         to_pad = int((self.kernel_size - 1) / 2)
         self.padder = nn.ReflectionPad2d(to_pad).type(torch.cuda.FloatTensor)
         to_pad = 0
-        self.convolver = nn.Conv2d(channels, channels, self.kernel_size, 1, padding=to_pad, bias=True).type(torch.cuda.FloatTensor)
+        self.convolver = nn.Conv2d(channels, channels, self.kernel_size, 1, padding=to_pad, bias=True).type(
+            torch.cuda.FloatTensor
+        )
 
     def forward(self, x):
         assert x.shape[1] == self.channels, (x.shape, self.channels)
@@ -117,9 +125,9 @@ def fill_noise(x, noise_type):
     """
     Fills tensor `x` with noise of type `noise_type`.
     """
-    if noise_type == 'u':
+    if noise_type == "u":
         x.uniform_(-0.5, 0.5)
-    elif noise_type == 'n':
+    elif noise_type == "n":
         x.normal_()
     else:
         assert False
